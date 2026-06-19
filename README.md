@@ -98,7 +98,8 @@ psql --version
 
 > **Screenshot 2:** Take a screenshot showing the output of both commands.
 >
-> `[insert screenshot]`
+> `![Screenshot2](https://github.com/Oryanick/DBMS_06/blob/master/Screenshot%202.png)
+
 
 ---
 
@@ -154,7 +155,7 @@ Exit the superuser session:
 > **Screenshot 3:** Take a screenshot showing the `CREATE ROLE`, `CREATE DATABASE`,
 > and both `SELECT` results inside the `postgres=#` session.
 >
-> `[insert screenshot]`
+> ![Screenshot3](https://github.com/Oryanick/DBMS_06/blob/master/Screenshot%203.png)
 
 ---
 
@@ -256,7 +257,7 @@ Inspect the structure of one table:
 > **Screenshot 4:** Take a screenshot showing the output of `\dt` and
 > `\d ausleihe`.
 >
-> `[insert screenshot]`
+> ![Screenshot4](https://github.com/Oryanick/DBMS_06/blob/master/Screenshot%204.png)
 
 ### Questions for Section 4
 
@@ -264,19 +265,35 @@ Inspect the structure of one table:
 and `mitglied` before `ausleihe`. Why does this order matter? What error would
 PostgreSQL report if you tried to create `ausleihe` first?
 
-> *Your answer:*
+> *Your answer:* Die Reihenfolge ist wichtig, weil Foreign Keys nur auf Tabellen zeigen können, die schon existieren. exemplar verweist auf buch (isbn), ausleihe verweist auf exemplar (exemplar_id) und mitglied (mitglied_id). Wenn man ausleihe zuerst erstellt, existieren die Tabellen, auf die verwiesen wird, noch nicht.
+Dann kommt in PostgreSQL ein Fehler wie:
+ERROR: relation “exemplar” does not exist
+ERROR: relation “mitglied” does not exist
+
 
 **Question 4.2:** The `mitglied_id` and `ausleihe_id` columns use
 `GENERATED ALWAYS AS IDENTITY`. What does this mean? What happens if you try to
 supply a value explicitly with `INSERT INTO mitglied (mitglied_id, ...) VALUES (5, ...)`?
 
-> *Your answer:*
+> *Your answer:* GENERATED ALWAYS AS IDENTITY bedeutet, dass PostgreSQL die ID automatisch erzeugt, vergleichbar mit AUTO_INCREMENT. Die Datenbank vergibt die Werte selbst. Wenn man versucht, selbst eine ID einzutragen:
+INSERT INTO mitglied (mitglied_id, ...) VALUES (5, ...), kommt ein Fehler: ERROR: cannot insert into column “mitglied_id”, außer man verwendet ausdrücklich OVERRIDING SYSTEM VALUE.
 
 **Question 4.3:** `tagesgebuehr` is defined as `NUMERIC(6,2)` while a simpler
 `REAL` would also hold decimal numbers. Give a concrete example of an arithmetic
 result that would differ between the two types when calculating a lending fee.
 
-> *Your answer:*
+> *Your answer:* NUMERIC(6,2) speichert exakt (keine Rundungsfehler), REAL arbeitet mit Gleitkommazahlen, speichert Werte basierend auf dem Binärsystem, nicht im dezimalsystem und kann ungenau sein.
+Zum Beispiel:
+tagesgebuehr = 0.10
+Anzahl Tage = 3
+
+NUMERIC:
+0.10 * 3 = 0.30 (exakt)
+
+REAL:
+0.10 * 3 = 0.30000000000000004
+
+Der Unterschied wird vor allem bei mehreren Berechnungen oder Summen sichtbar.
 
 ---
 
@@ -361,7 +378,7 @@ SELECT COUNT(*) FROM mitglied;
 
 > **Screenshot 5:** Take a screenshot showing the three `COUNT(*)` results.
 >
-> `[insert screenshot]`
+> ![Screenshot5](https://github.com/Oryanick/DBMS_06/blob/master/Screenshot%205.png)
 
 Exit `psql`:
 
@@ -446,7 +463,7 @@ SELECT * FROM ausleihe;
 
 > **Screenshot 6:** Take a screenshot showing the full output of `SELECT * FROM ausleihe`.
 >
-> `[insert screenshot]`
+>![Screenshot6](https://github.com/Oryanick/DBMS_06/blob/master/Screenshot%206.png)
 
 ### Questions for Section 6
 
@@ -454,19 +471,19 @@ SELECT * FROM ausleihe;
 filesystem. What is the difference between server-side `COPY` and a
 client-side import? In which scenario would you need the client-side variant?
 
-> *Your answer:*
+> *Your answer:* COPY FROM liest die Datei direkt auf dem Server. Das bedeutet, der PostgreSQL Server muss Zugriff auf den angegebenen Dateipfad haben. \copy dagegen wird im psql-Client ausgeführt. Dabei liest der Client die Datei lokal ein und schickt die Daten an den Server. Der clientseitigen COPY wird vor allem dann benötigt, wenn man keinen direkten Zugriff auf das Server Dateisystem hat bzw. keine entsprechenden Rechte besitzt.
 
 **Question 6.2:** The `NULL ''` option maps empty CSV fields to `NULL`.
 What would happen without this option if the `rueckgabe_datum` field is empty?
 
-> *Your answer:*
+> *Your answer:* Ohne die Angabe NULL'' interpretiert PostgreSQL leere Felder aus der CSV nicht automatisch als NULL. Das kann dazu führen, dass leere Werte entweder als leere Strings gespeichert werden oder je nach Spaltentyp zu Importfehlern führen, da das Format nicht eindeutig als NULL erkannt wird.
 
 **Question 6.3:** `ausleihe_id` is `GENERATED ALWAYS AS IDENTITY` and was not
 included in the CSV or the `COPY` column list. How does PostgreSQL handle the
 missing value? What would happen if you tried to include `ausleihe_id` in the
 `COPY` column list with explicit values?
 
-> *Your answer:*
+> *Your answer:* Die Spalte ausleihe_id wird automatisch durch PostgreSQL generiert, da sie als GENERATED ALWAYS AS IDENTITY definiert ist. Wird sie beim COPY nicht angegeben, könnte die Datenbank selbstständig passende Werte erzeugen. Wenn man versuchen würde, eigene Werte in diese Spalte zu schreiben, würde PostgreSQL einen Fehler ausgeben, da GENERATED ALWAYS keine manuellen Eingaben erlaubt. Das wäre nur mit OVERRIDING SYSTEM VALUE möglich.
 
 ---
 
@@ -504,6 +521,8 @@ ORDER BY tage_ausgeliehen DESC;
 > *Describe the result: how many open loans are there, and which member has
 > held a book the longest?*
 
+> Es gibt 2 offene Ausleihen. Das Mitglied Hartmann, Lea hält das Buch Homo Faber am längsten ausgeliehen (45 Tage), während Berger, Jonas das Buch Der Vorleser seit 38 Tagen ausgeliehen hat.
+
 ---
 
 ### Query 2 – Loans per Member
@@ -524,6 +543,11 @@ ORDER BY ausleihen_gesamt DESC;
 
 > *Which member has the most loans? What does `FILTER (WHERE ...)` do here
 > compared to a `CASE WHEN` expression?*
+
+Das Mitglied Berger, Jonas hat die meisten Kredite mit insgesamt 2 Ausleihen.
+- FILTER (WHERE ...) bedeutet: Es wird nur für diese Bedingung gezählt. FILTER ist lesbarer,kompakter, nah am SQL-standard und wird direkt in Aggregatfunktion integriert. 
+- CASE WHEN müsste man manuell als Ausdruck bauen ZB: SUM(CASE WHEN rueckgabe_datum IS NULL THEN 1 ELSE 0 END)
+
 
 ---
 
@@ -547,10 +571,12 @@ WHERE  NOT EXISTS (
 > *Which books appear in the result? Verify the result manually against the
 > data you entered.*
 
+Das Buch Das Parfum(Fischer) erscheint im Ergebnis. Dieses Buch wurde zwar in buch angelegt, aber es existiert kein Eintrag in ausleihe, der auf dieses Buch verweist. Alle anderen Bücher wurden mindestens einmal ausgeliehen.
+
 > **Screenshot 7:** Take a screenshot showing the output of all three queries
 > in sequence in the `psql` shell.
 >
-> `[insert screenshot]`
+> ![Screenshot7](https://github.com/Oryanick/DBMS_06/blob/master/Screenshot%207.png)
 
 ### Questions for Section 7
 
@@ -558,19 +584,31 @@ WHERE  NOT EXISTS (
 performed to always produce a correct result, and does the join order affect
 correctness or only performance?
 
-> *Your answer:*
+> *Your answer:* Die Verknüpfungen folgen logisch den Fremdschlüsselbeziehungen in der Datenbank. Dabei ergibt sich die Kette aus den Tabellenbeziehungen: ausleihe → exemplar → buch → mitglied
+Das bedeutet konkret: aus der Ausleihe wird über exemplar_id auf exemplar zugegriffen, von dort über isbn auf buch und über mitglied_id auf mitglied. Für die Korrektheit des Ergebnisses ist die Reihenfolge der JOINs jedoch nicht entscheidend, solange alle JOIN Bedingungen korrekt angegeben sind. SQL arbeitet deklarativ, das heißt, es beschreibt nur das gewünschte Ergebnis und nicht die genaue Ausführungsreihenfolge. Die tatsächliche Reihenfolge wird vom Query Optimizer bestimmt und kann sich je nach Ausführungsplan ändern. Der Unterschied liegt daher nur in der Performance, nicht in der Korrektheit.
 
 **Question 7.2:** Query 2 groups by `m.mitglied_id` in addition to the name
 columns. Why is grouping by the primary key necessary even though names appear
 unique in the sample data?
 
-> *Your answer:*
+> *Your answer:* Die Gruppierung nach m.mitglied_id ist notwendig, weil SQL verlangt, dass alle nicht aggregierten Spalten entweder im GROUP BY enthalten sind oder funktional davon abhängen. Auch wenn die Namen im Beispiel eindeutig erscheinen, kann SQL das nicht voraussetzen. Es ist möglich, dass mehrere Mitglieder denselben Vornamen oder Nachnamen haben. Nur die mitglied_id ist garantiert eindeutig und eindeutig einem Datensatz zugeordnet. Durch die Gruppierung nach dem Primärschlüssel wird sichergestellt, dass jede Aggregation eindeutig pro Mitglied erfolgt und das Ergebnis unabhängig von Datenannahmen korrekt bleibt.
 
 **Question 7.3:** Query 3 uses `NOT EXISTS` with a correlated subquery. Rewrite
 the query using `EXCEPT` and verify that both variants return the same result.
 Write your rewritten query here:
 
 > *Your rewritten query:*
+```sql
+SELECT b.titel, b.verlag
+FROM buch b
+
+EXCEPT
+
+SELECT b.titel, b.verlag
+FROM buch b
+JOIN exemplar e ON e.isbn = b.isbn
+JOIN ausleihe a ON a.exemplar_id = e.exemplar_id
+```
 
 Exit `psql`:
 
@@ -667,7 +705,7 @@ psql -U <your-username> -d kino -f kino.sql
 
 > **Screenshot 8:** Take a screenshot showing the script execution output.
 >
-> `[insert screenshot]`
+> ![Screenshot8](https://github.com/Oryanick/DBMS_06/blob/master/Screenshot%208.png)
 
 ---
 
@@ -720,7 +758,7 @@ ORDER BY reservierungen DESC;
 > **Screenshot 9:** Take a screenshot showing the output of all three
 > `SELECT` statements.
 >
-> `[insert screenshot]`
+> ![Screenshot9](https://github.com/Oryanick/DBMS_06/blob/master/Screenshot%209.png)
 
 ### Questions for Section 9
 
@@ -728,19 +766,19 @@ ORDER BY reservierungen DESC;
 constraint. What does this prevent, and at which level is this constraint
 enforced — application or database?
 
-> *Your answer:*
+> *Your answer:* Die Einschränkung UNIQUE (vorstellung_id, sitzplatz) sorgt dafür, dass ein bestimmter Sitzplatz innerhalb einer konkreten Vorstellung nur einmal vergeben werden kann. Das heißt konkret: Ein Platz darf in derselben Vorstellung nicht doppelt reserviert werden, in anderen Vorstellungen aber schon. Diese Regel wird direkt auf Datenbankebene durchgesetzt und nicht in der Anwendung. Dadurch kann keine Software oder kein Benutzer sie umgehen. Selbst bei mehreren gleichzeitigen Zugriffen bleibt die Datenintegrität erhalten, weil die Datenbank das zentral absichert.
 
 **Question 9.2:** The third query uses `LEFT JOIN` between `vorstellung` and
 `reservierung`. What would be different about the result if you used `JOIN`
 (inner join) instead? Which films would disappear from the result and why?
 
-> *Your answer:*
+> *Your answer:* Der Unterschied liegt darin, wie mit fehlenden Daten umgegangen wird. Ein LEFT JOIN gibt alle Filme zurück, auch wenn sie keine Reservierungen haben. In diesem Fall erscheinen die Reservierungsdaten dann als NULL. Ein INNER JOIN zeigt dagegen nur Filme, zu denen es mindestens eine Reservierung gibt. Filme ohne Buchungen werden komplett ausgeblendet. Das bedeutet konkret: Bei einem INNER JOIN würden alle Filme ohne Reservierungen aus dem Ergebnis verschwinden, also auch solche, die zwar existieren, aber noch nicht gebucht wurden. Man kann sagen, dass LEFT JOIN alles zeigt, INNER JOIN aber nur die aktiven Datensätze mit Beziehung.
 
 **Question 9.3:** `ON DELETE CASCADE` was chosen for `reservierung.vorstellung_id`,
 but `ON DELETE RESTRICT` for `vorstellung.film_id`. Justify both choices in
 terms of the domain.
 
-> *Your answer:*
+> *Your answer:* ON DELETE CASCADE bei reservierung.vorstellung_id bedeutet, dass alle Reservierungen automatisch gelöscht werden, wenn eine Vorstellung entfernt wird. Dadurch bleiben keine verwaisten Datensätze übrig, die auf nichts mehr zeigen würden. ON DELETE RESTRICT bei vorstellung.film_id verhindert dagegen, dass ein Film gelöscht wird, solange noch Vorstellungen existieren. Das schützt historische und abhängige Daten davor, versehentlich verloren zu gehen. Insgesamt sorgt CASCADE eher für automatische Aufräumlogik, während RESTRICT als Schutzmechanismus für zentrale Daten fungiert.
 
 Exit `psql`:
 
@@ -757,7 +795,7 @@ SQLite (DBMS_05) and PostgreSQL (this exercise) are both relational databases,
 but they operate very differently. Name two concrete differences you experienced
 in this exercise — in terms of setup, access control, or SQL behaviour.
 
-> *Your answer:*
+> *Your answer:* Zwei zentrale Unterschiede aus der Praxis sind die Architektur und die Benutzerverwaltung. SQLite ist eine eingebettete Datenbank. Das bedeutet, sie läuft direkt in der Anwendung und benötigt keinen separaten Server. Es ist keine Installation eines Datenbankservers notwendig. PostgreSQL hingegen ist ein Client-Server-System. Dabei läuft der Datenbankserver im Hintergrund und wird separat betrieben. Der Zugriff erfolgt entweder lokal über localhost oder über ein Netzwerk. Ein weiterer wichtiger Unterschied ist die Zugriffskontrolle. SQLite besitzt keine echte Benutzer- oder Rollenverwaltung. Es gibt keine Rechteverwaltung auf Datenbankebene. PostgreSQL hingegen arbeitet mit Rollen und Benutzerrechten. Man kann Benutzer mit LOGIN-Rechten erstellen, Eigentümer festlegen und Zugriffe gezielt steuern. Außerdem können mehrere Benutzer gleichzeitig sauber verwaltet werden.
 
 **Question B – COPY vs. INSERT:**  
 You inserted the `buch` and `exemplar` rows one at a time, and the `ausleihe`
@@ -765,21 +803,21 @@ rows via `COPY`. For a real import of 50,000 rows, which approach would you
 choose and why? What is the main operational cost of individual `INSERT`
 statements at scale?
 
-> *Your answer:*
+> *Your answer:* Für große Datenmengen wie 50.000 Zeilen würde man eindeutig COPY verwenden. Der Hauptgrund ist die deutlich bessere Performance. COPY ist speziell für Massendatenimporte optimiert und verursacht deutlich weniger Overhead pro Datensatz. Bei INSERT sieht das anders aus, jede Zeile wird einzeln verarbeitet, was viele einzelne Operationen und Transaktionen erzeugt. Dadurch entsteht ein hoher Overhead und der Import wird bei großen Datenmengen deutlich langsamer.
 
 **Question C – Role model:**  
 You created a dedicated role with `LOGIN` and a password. The `postgres`
 superuser also exists. What is the security principle behind creating a
 separate role instead of always connecting as `postgres`?
 
-> *Your answer:*
+> *Your answer:* Der wichtigste Sicherheitsaspekt ist das sogenannte Least-Privilege-Prinzip. Das bedeutet, jeder Benutzer bekommt nur die Rechte, die er wirklich benötigt. Das hat mehrere Vorteile. Zum einen werden versehentliche Änderungen an wichtigen Systemdaten verhindert. Zum anderen gibt es eine klare Trennung zwischen Administrator (postgres Superuser) und normalen Benutzern. Dadurch wird die Kontrolle über die Datenbank deutlich sicherer und strukturierter. Der postgres Superuser sollte daher nicht im normalen Arbeitsalltag verwendet werden, da er vollständige Rechte über das gesamte System besitzt.
 
 **Question D – Script-driven setup:**  
 The `kino.sql` script creates the schema and inserts data in one run. What
 is the advantage of this approach over typing the statements interactively?
 Name one situation where an interactive approach is still preferable.
 
-> *Your answer:*
+> *Your answer:* Der größte Vorteil von Skripten wie kino.sql ist die Reproduzierbarkeit. Das bedeutet, dass die Datenbank jederzeit exakt gleich aufgebaut werden kann. Außerdem sind Skripte schnell ausführbar, gut versionierbar und ideal für automatisierte Deployments. Die interaktive Nutzung hat dagegen andere Vorteile. Sie eignet sich besonders gut zum Debuggen, zum schrittweisen Testen von SQL Befehlen und allgemein zum Lernen und Experimentieren. Es lässt sich kurz sagen, dass Skripte ideal für produktive und wiederholbare Setups sind, während die interaktive Nutzung für Entwicklung und Verständnis besser geeignet ist.
 
 ---
 
